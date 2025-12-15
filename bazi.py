@@ -1,6 +1,6 @@
-from lunar_python import Lunar, Solar, EightChar
+from lunar_python import Solar
 
-def get_bazi_text(year, month, day, hour):
+def get_bazi_text(year, month, day, hour, gender="男"):
     """
     输入公历时间，返回详细的八字+大运排盘文本
     """
@@ -14,34 +14,39 @@ def get_bazi_text(year, month, day, hour):
     ganzhi_day = lunar.getDayInGanZhi()
     ganzhi_time = lunar.getTimeInGanZhi()
     
-    # 3. 计算大运 (关键升级)
+    # 3. 计算大运 (修复 Bug 核心区域)
+    # 性别转换：lunar_python 中 1为男，0为女
+    gender_code = 1 if gender == "男" else 0
+    
     # 获取运 (Yun) 对象
-    yun = lunar.getEightChar().getYun(1) # 1代表男顺女逆的计算逻辑，库会自动处理
+    yun = lunar.getEightChar().getYun(gender_code)
     
     # 起运信息
     start_year = yun.getStartYear()
-    start_age = yun.getStartAge()
+    # 【修复】手动计算起运年龄，而不是调用 getStartAge()
+    start_age = start_year - year
     
     # 获取大运列表 (获取未来10步大运)
     da_yun_arr = yun.getDaYun()
     dayun_str_list = []
     
     # 循环提取大运：年份 + 干支
-    for i in range(1, 10): # 通常取前9-10步大运
+    # 注意：da_yun_arr[0] 通常是起运前，从索引 1 开始取大运
+    # 为了保险，我们遍历列表并显示
+    for i in range(1, len(da_yun_arr)):
+        if i > 10: break # 只取前10步
         dy = da_yun_arr[i]
-        # 大运起运年
         dy_year = dy.getStartYear()
-        # 大运干支
         dy_ganzhi = dy.getGanZhi()
         dayun_str_list.append(f"{dy_year}年起: 【{dy_ganzhi}】")
 
     dayun_text = "\n".join(dayun_str_list)
 
-    # 4. 组装成给用户看（也给AI看）的文本
+    # 4. 组装文本
     bazi_text = f"""
 【基本信息】
 出生公历：{year}年{month}月{day}日 {hour}时
-性别：(请在侧边栏确认)
+性别：{gender}
 
 【四柱八字】
 年柱：{ganzhi_year}
@@ -52,7 +57,7 @@ def get_bazi_text(year, month, day, hour):
 【起运时间】
 出生后 {start_age} 岁起运 (公历 {start_year} 年左右)
 
-【大运排盘】 (年份-大运干支)
+【大运排盘】
 {dayun_text}
 """
     return bazi_text.strip()
