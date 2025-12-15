@@ -62,7 +62,7 @@ with st.sidebar:
     if st.button("🔍 第一步：排盘并核对", type="primary", use_container_width=True):
         st.session_state.stage = 'confirm'
         # 调用新的 bazi.py 生成详细的大运信息
-        st.session_state.bazi_cache = get_bazi_text(birth_date.year, birth_date.month, birth_date.day, birth_time.hour)
+        st.session_state.bazi_cache = get_bazi_text(birth_date.year, birth_date.month, birth_date.day, birth_time.hour, gender)
     
     if st.button("🔄 重置系统"):
         st.session_state.stage = 'input'
