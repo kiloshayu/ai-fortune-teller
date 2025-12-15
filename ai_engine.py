@@ -4,12 +4,11 @@ import os
 
 def get_ai_analysis(api_key, bazi_text, birth_year):
     """
-    OpenAI 兼容模式：一次性获取 0-80 岁全周期数据 + 综合评分
+    OpenAI 兼容模式：引入【大运锚定权重算法】
     """
     if not api_key:
         return {"error": "API Key 为空"}
 
-    # ⚠️ 保持你的中转配置
     BASE_URL = "https://xh.v1api.cc/v1" 
     
     try:
@@ -17,38 +16,46 @@ def get_ai_analysis(api_key, bazi_text, birth_year):
     except Exception as e:
         return {"error": f"客户端初始化失败: {str(e)}"}
 
-    # 设定预测范围 (0-80岁，太长AI容易超时)
     start_year = birth_year
     end_year = birth_year + 80
 
+    # --- 核心提示词升级：加入权重逻辑 ---
     prompt = f"""
-    你是一个精通《三命通会》与华尔街量化分析的专家。
-    请根据用户的八字，生成从 {start_year} 年（出生）到 {end_year} 年（80岁）的完整人生量化报告。
+    你是一个精通《三命通会》与华尔街量化算法的专家。
+    请根据用户的八字，采用【大运权重锚定法】生成从 {start_year} 到 {end_year} 年的量化数据。
 
     【用户信息】
     {bazi_text}
 
-    【任务要求】
-    1. **全周期K线**：生成每年流年运势数据 (Open/High/Low/Close, 基准50分)。
-       - 遇到“大运交脱”或“流年冲克”时，波动率(High-Low)要变大。
-    2. **五维雷达图**：打分 (0-100分)：财富、事业、感情、健康、贵人。
-    3. **全网排名**：预估命格击败了全国多少人 (%).
-    4. **重大事件**：在 "event" 字段标记关键人生节点（如：考学、结婚、生子、发财、灾病），普通年份留空。
+    【核心算法规则】 (必须严格遵守)
+    1. **大运定趋势 (Trend)**: 
+       - 大运决定了股价的“箱体”区间。
+       - 喜用神大运：基准分设为 70-80 分（牛市）。
+       - 忌神/刑冲大运：基准分设为 30-40 分（熊市）。
+       - 平运：基准分 50 分。
+    2. **流年定波动 (Volatility)**:
+       - 流年是在“大运基准分”的基础上进行加减分（幅度 +/- 20分）。
+       - **重要原则**：如果是“忌神大运”中的“喜用流年”，分数不能给太高（例如基准30 + 流年20 = 50分），这叫“熊市反弹”。
+       - **重要原则**：如果是“喜用大运”中的“忌神流年”，分数不能给太低（例如基准80 - 15 = 65分），这叫“牛市回调”。
+    3. **输出要求**:
+       - 必须体现出明显的“十年一换运”的阶梯感。
 
-    【输出格式】
-    严格返回纯 JSON 对象，结构如下：
+    【输出数据结构】
+    严格返回纯 JSON，结构如下：
     {{
         "ranking": 92,
-        "radar": {{
-            "wealth": 85, "career": 90, "love": 70, "health": 60, "social": 88
-        }},
+        "radar": {{ "wealth": 80, "career": 80, "love": 60, "health": 70, "social": 85 }},
         "timeline": [
             {{
                 "year": {start_year},
                 "ganzhi": "干支",
-                "open": 50, "high": 50, "low": 50, "close": 50,
-                "event": "出生",
-                "comment": "批语..."
+                "dayun": "当前所属大运(如甲午)",
+                "open": 45, 
+                "high": 48, 
+                "low": 40, 
+                "close": 42, 
+                "event": "",
+                "comment": "大运为忌(基准40)，流年平平，低位震荡。"
             }},
             ...
         ]
@@ -56,13 +63,12 @@ def get_ai_analysis(api_key, bazi_text, birth_year):
     """
 
     try:
-        # 使用你指定的模型
         model_name = "gemini-3-pro-preview" 
 
         response = client.chat.completions.create(
             model=model_name, 
             messages=[
-                {"role": "system", "content": "You are a JSON data generator. Output raw JSON only."},
+                {"role": "system", "content": "You are a Quant Analyst. Output JSON only."},
                 {"role": "user", "content": prompt}
             ],
             temperature=0.7,
